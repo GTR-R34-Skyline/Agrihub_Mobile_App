@@ -23,6 +23,7 @@ interface AnalyticsData {
 export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuthStore();
+
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,8 +32,8 @@ export default function AdminDashboard() {
     try {
       const data = await adminAPI.getAnalytics();
       setAnalytics(data);
-    } catch (error) {
-      console.error('Failed to fetch analytics', error);
+    } catch (err) {
+      console.error('Failed to fetch analytics', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -40,11 +41,13 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    // Basic role check
-    if (user && user.role !== 'admin') {
-         router.replace('/');
-         return;
+    if (!user) return;
+
+    if (user.role !== 'admin') {
+      router.replace('/');
+      return;
     }
+
     fetchAnalytics();
   }, [user]);
 
@@ -57,76 +60,82 @@ export default function AdminDashboard() {
     return <LoadingSpinner />;
   }
 
-  const StatCard = ({ title, value, icon, color, subtitle }: any) => (
+  const StatCard = ({
+    title,
+    value,
+    icon,
+    color,
+    subtitle,
+  }: {
+    title: string;
+    value: string | number;
+    icon: keyof typeof Ionicons.glyphMap;
+    color: string;
+    subtitle?: string;
+  }) => (
     <View style={styles.card}>
-      <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
+      <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
-      <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statTitle}>{title}</Text>
-        {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
-      </View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statTitle}>{title}</Text>
+      {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
     </View>
   );
 
   return (
     <>
       <Stack.Screen options={{ title: 'Admin Dashboard' }} />
-      <ScrollView 
+      <ScrollView
         style={styles.container}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View style={styles.content}>
-            <View style={styles.header}>
-                <Text style={styles.greeting}>Hello, Admin</Text>
-                <Text style={styles.date}>{new Date().toDateString()}</Text>
-            </View>
+          <Text style={styles.greeting}>Hello, Admin</Text>
+          <Text style={styles.date}>{new Date().toDateString()}</Text>
 
-            {analytics && (
-                <>
-                {/* Revenue Section */}
-                <View style={styles.revenueCard}>
-                    <View style={styles.revenueHeader}>
-                        <Text style={styles.revenueLabel}>Total Revenue</Text>
-                        <Ionicons name="wallet-outline" size={24} color="#fff" />
-                    </View>
-                    <Text style={styles.revenueValue}>₹{analytics.total_revenue.toLocaleString()}</Text>
-                    <Text style={styles.revenueSub}>Lifetime earnings across the platform</Text>
-                </View>
+          {analytics && (
+            <>
+              <View style={styles.revenueCard}>
+                <Text style={styles.revenueLabel}>Total Revenue</Text>
+                <Text style={styles.revenueValue}>
+                  ₹{analytics.total_revenue.toLocaleString()}
+                </Text>
+              </View>
 
-                <Text style={styles.sectionTitle}>Overview</Text>
-                <View style={styles.grid}>
-                    <StatCard 
-                        title="Total Orders" 
-                        value={analytics.total_orders} 
-                        icon="cart" 
-                        color={theme.colors.primary} 
-                    />
-                    <StatCard 
-                        title="Users" 
-                        value={analytics.total_users} 
-                        icon="people" 
-                        color={theme.colors.secondary}
-                        subtitle={`${analytics.total_farmers} Farmers, ${analytics.total_buyers} Buyers`}
-                    />
-                    <StatCard 
-                        title="Products" 
-                        value={analytics.total_products} 
-                        icon="leaf" 
-                        color={theme.colors.success}
-                        subtitle={`${analytics.pending_products} Pending Approval`}
-                    />
-                     <StatCard 
-                        title="System Health" 
-                        value="100%" 
-                        icon="pulse" 
-                        color={theme.colors.info}
-                        subtitle="All systems operational"
-                    />
-                </View>
-                </>
-            )}
+              <View style={styles.grid}>
+                <StatCard
+                  title="Orders"
+                  value={analytics.total_orders}
+                  icon="cart"
+                  color={theme.colors.primary}
+                />
+                <StatCard
+                  title="Users"
+                  value={analytics.total_users}
+                  icon="people"
+                  color={theme.colors.secondary}
+                  subtitle={`${analytics.total_farmers} Farmers · ${analytics.total_buyers} Buyers`}
+                />
+                <StatCard
+                  title="Products"
+                  value={analytics.total_products}
+                  icon="leaf"
+                  color={theme.colors.success}
+                  subtitle={`${analytics.pending_products} Pending`}
+                />
+                <StatCard
+                  title="System Health"
+                  value="100%"
+                  icon="pulse"
+                  color={theme.colors.info}
+                  subtitle="All systems operational"
+                />
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
     </>
@@ -134,106 +143,34 @@ export default function AdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  content: {
-    padding: 20,
-  },
-  header: {
-      marginBottom: 24,
-  },
-  greeting: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: theme.colors.text,
-  },
-  date: {
-      fontSize: 16,
-      color: theme.colors.textSecondary,
-      marginTop: 4,
-  },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  content: { padding: 20 },
+  greeting: { fontSize: 28, fontWeight: 'bold', color: theme.colors.text },
+  date: { color: theme.colors.textSecondary, marginBottom: 24 },
   revenueCard: {
-      backgroundColor: theme.colors.primary,
-      borderRadius: 16,
-      padding: 24,
-      marginBottom: 32,
-      shadowColor: theme.colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 6,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
   },
-  revenueHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 16,
-  },
-  revenueLabel: {
-      color: 'rgba(255,255,255,0.8)',
-      fontSize: 16,
-      fontWeight: '600',
-  },
-  revenueValue: {
-      fontSize: 36,
-      fontWeight: 'bold',
-      color: '#fff',
-      marginBottom: 8,
-  },
-  revenueSub: {
-      color: 'rgba(255,255,255,0.6)',
-      fontSize: 14,
-  },
-  sectionTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: theme.colors.text,
-      marginBottom: 16,
-  },
-  grid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 16,
-  },
+  revenueLabel: { color: '#fff', opacity: 0.8 },
+  revenueValue: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   card: {
-      width: (width - 56) / 2, // 2 columns with padding/gap
-      backgroundColor: '#fff',
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
+    width: (width - 56) / 2,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
   },
   iconContainer: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  statContent: {
-      flex: 1,
-  },
-  statValue: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: theme.colors.text,
-      marginBottom: 4,
-  },
-  statTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.colors.textSecondary,
-      marginBottom: 4,
-  },
-  statSubtitle: {
-      fontSize: 12,
-      color: theme.colors.textSecondary,
-      opacity: 0.8,
-  },
+  statValue: { fontSize: 22, fontWeight: 'bold' },
+  statTitle: { fontSize: 14, color: theme.colors.textSecondary },
+  statSubtitle: { fontSize: 12, opacity: 0.7 },
 });
