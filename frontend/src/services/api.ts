@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SignupData } from '../types';
 
 /**
- * Backend URL (must be public for mobile)
+ * Backend URL
  */
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -11,11 +11,18 @@ if (!API_URL) {
 }
 
 /**
- * Auth header helper
+ * Always returns a VALID HeadersInit
  */
-const getAuthHeader = async () => {
+const getAuthHeaders = async (): Promise<Record<string, string>> => {
   const token = await AsyncStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+
+  if (!token) {
+    return {};
+  }
+
+  return {
+    Authorization: `Bearer ${token}`,
+  };
 };
 
 /* =========================
@@ -25,7 +32,9 @@ export const authAPI = {
   login: async (email: string, password: string) => {
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ email, password }),
     });
 
@@ -40,7 +49,9 @@ export const authAPI = {
   signup: async (data: SignupData) => {
     const res = await fetch(`${API_URL}/api/auth/signup`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     });
 
@@ -53,8 +64,9 @@ export const authAPI = {
   },
 
   getMe: async () => {
-    const headers = await getAuthHeader();
+    const headers = await getAuthHeaders();
     const res = await fetch(`${API_URL}/api/auth/me`, { headers });
+
     if (!res.ok) throw new Error('Auth expired');
     return res.json();
   },
@@ -81,10 +93,14 @@ export const productAPI = {
   },
 
   create: async (data: any) => {
-    const headers = await getAuthHeader();
+    const headers = await getAuthHeaders();
+
     const res = await fetch(`${API_URL}/api/products`, {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     });
 
@@ -93,7 +109,8 @@ export const productAPI = {
   },
 
   getFarmerProducts: async () => {
-    const headers = await getAuthHeader();
+    const headers = await getAuthHeaders();
+
     const res = await fetch(`${API_URL}/api/farmer/products`, { headers });
     if (!res.ok) throw new Error('Failed to fetch farmer products');
     return res.json();
@@ -105,17 +122,22 @@ export const productAPI = {
 ========================= */
 export const cartAPI = {
   get: async () => {
-    const headers = await getAuthHeader();
+    const headers = await getAuthHeaders();
+
     const res = await fetch(`${API_URL}/api/cart`, { headers });
     if (!res.ok) throw new Error('Failed to fetch cart');
     return res.json();
   },
 
   add: async (productId: string, quantity: number) => {
-    const headers = await getAuthHeader();
+    const headers = await getAuthHeaders();
+
     const res = await fetch(`${API_URL}/api/cart`, {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ product_id: productId, quantity }),
     });
 
@@ -129,24 +151,56 @@ export const cartAPI = {
 ========================= */
 export const orderAPI = {
   create: async (shippingAddress: string, items: any[]) => {
-    const headers = await getAuthHeader();
+    const headers = await getAuthHeaders();
+
     const res = await fetch(`${API_URL}/api/orders`, {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         shipping_address: shippingAddress,
         items,
       }),
     });
 
-    if (!res.ok) throw new Error('Order creation failed');
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Order creation failed');
+    }
+
     return res.json();
   },
 
   getAll: async () => {
-    const headers = await getAuthHeader();
+    const headers = await getAuthHeaders();
+
     const res = await fetch(`${API_URL}/api/orders`, { headers });
     if (!res.ok) throw new Error('Failed to fetch orders');
+    return res.json();
+  },
+
+  updateStatus: async (
+    orderId: string,
+    status: 'confirmed' | 'shipped' | 'delivered'
+  ) => {
+    const headers = await getAuthHeaders();
+
+    const res = await fetch(`${API_URL}/api/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to update order status');
+    }
+
     return res.json();
   },
 };
@@ -156,13 +210,10 @@ export const orderAPI = {
 ========================= */
 export const paymentAPI = {
   process: async () => {
-    console.log('💳 Processing payment (MOCK)');
-
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     return {
       success: true,
-      message: 'Payment processed successfully',
       transaction_id: `TXN_${Date.now()}`,
     };
   },
@@ -173,10 +224,9 @@ export const paymentAPI = {
 ========================= */
 export const adminAPI = {
   getPendingProducts: async () => {
-    const headers = await getAuthHeader();
-    const res = await fetch(`${API_URL}/api/admin/pending-products`, {
-      headers,
-    });
+    const headers = await getAuthHeaders();
+
+    const res = await fetch(`${API_URL}/api/admin/pending-products`, { headers });
     if (!res.ok) throw new Error('Failed to fetch pending products');
     return res.json();
   },
@@ -185,12 +235,16 @@ export const adminAPI = {
     id: string,
     status: 'approved' | 'rejected'
   ) => {
-    const headers = await getAuthHeader();
+    const headers = await getAuthHeaders();
+
     const res = await fetch(
       `${API_URL}/api/admin/products/${id}/approve`,
       {
         method: 'PUT',
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ status }),
       }
     );
