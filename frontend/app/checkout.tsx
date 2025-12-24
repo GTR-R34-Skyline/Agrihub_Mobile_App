@@ -10,7 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function CheckoutScreen() {
   const router = useRouter();
-  const { items, total, clearCart } = useCartStore();
+  const { items, total } = useCartStore();
+
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -26,33 +27,42 @@ export default function CheckoutScreen() {
       return;
     }
 
+    // 🔒 Type-safe validation
+    const invalidItem = items.find(item => !item.product);
+    if (invalidItem) {
+      Alert.alert(
+        'Cart Error',
+        'Some products are no longer available. Please refresh your cart.'
+      );
+      return;
+    }
+
     try {
       setLoading(true);
-      
-      // 1. Process Payment
+
+      // 1️⃣ Mock payment
       const paymentResult = await paymentAPI.process();
-      
-      if (paymentResult.success) {
-        // 2. Create Order
-        const orderItems = items.map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity
-        }));
-        
-        await orderAPI.create(address, orderItems);
-        
-        // 3. Clear Cart
-        await clearCart();
-        
-        // 4. Navigate to Success
-        router.replace('/payment/success');
-      } else {
-        // Navigate to Failure
+
+      if (!paymentResult.success) {
         router.replace('/payment/failure');
+        return;
       }
+
+      // 2️⃣ Create backend-safe order payload
+      const orderItems = items.map(item => ({
+        product_id: item.product!.id, // safe due to validation above
+        quantity: item.quantity,
+      }));
+
+      // 3️⃣ Create order
+      await orderAPI.create(address, orderItems);
+
+      // 4️⃣ Navigate to success screen
+      router.replace('/payment/success');
+
     } catch (error: any) {
       console.error('Checkout error:', error);
-      Alert.alert('Error', error.message || 'Something went wrong');
+      Alert.alert('Error', error.message || 'Order creation failed');
     } finally {
       setLoading(false);
     }
@@ -63,6 +73,7 @@ export default function CheckoutScreen() {
       <Stack.Screen options={{ title: 'Checkout' }} />
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.content}>
+          {/* Shipping Address */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Shipping Address</Text>
             <Input
@@ -75,19 +86,23 @@ export default function CheckoutScreen() {
             />
           </View>
 
+          {/* Order Summary */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Order Summary</Text>
-            {items.map((item) => (
+
+            {items.map(item => (
               <View key={item.id} style={styles.summaryItem}>
                 <Text style={styles.itemName} numberOfLines={1}>
-                  {item.product?.name} x {item.quantity}
+                  {item.product!.name} × {item.quantity}
                 </Text>
                 <Text style={styles.itemPrice}>
-                  ₹{(item.product?.price || 0) * item.quantity}
+                  ₹{item.product!.price * item.quantity}
                 </Text>
               </View>
             ))}
+
             <View style={styles.divider} />
+
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Amount</Text>
               <Text style={styles.totalValue}>₹{total.toFixed(2)}</Text>
@@ -95,6 +110,7 @@ export default function CheckoutScreen() {
           </View>
         </ScrollView>
 
+        {/* Footer */}
         <View style={styles.footer}>
           <Button
             title={`Pay ₹${total.toFixed(2)}`}
@@ -102,9 +118,12 @@ export default function CheckoutScreen() {
             loading={loading}
             disabled={loading}
           />
+
           <View style={styles.secureBadge}>
             <Ionicons name="lock-closed" size={12} color={theme.colors.textSecondary} />
-            <Text style={styles.secureText}>Payments are secure and encrypted</Text>
+            <Text style={styles.secureText}>
+              Payments are secure and encrypted
+            </Text>
           </View>
         </View>
       </View>
@@ -125,10 +144,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
     elevation: 2,
   },
   sectionTitle: {
