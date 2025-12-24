@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SignupData } from '../types';
 
+/**
+ * Backend URL
+ */
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 if (!API_URL) {
@@ -8,7 +11,7 @@ if (!API_URL) {
 }
 
 /**
- * Always return a valid headers object
+ * Always return valid headers (never undefined)
  */
 const getAuthHeaders = async (): Promise<Record<string, string>> => {
   const token = await AsyncStorage.getItem('token');
@@ -51,7 +54,6 @@ export const authAPI = {
   getMe: async () => {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_URL}/api/auth/me`, { headers });
-
     if (!res.ok) throw new Error('Auth expired');
     return res.json();
   },
@@ -79,15 +81,45 @@ export const productAPI = {
 
   create: async (data: any) => {
     const headers = await getAuthHeaders();
-
     const res = await fetch(`${API_URL}/api/products`, {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     });
 
     if (!res.ok) throw new Error('Create product failed');
     return res.json();
+  },
+
+  // ✅ FIXED: UPDATE PRODUCT
+  update: async (id: string, data: any) => {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/api/products/${id}`, {
+      method: 'PUT',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error('Update product failed');
+    return res.json();
+  },
+
+  // ✅ FIXED: DELETE PRODUCT
+  delete: async (id: string) => {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/api/products/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    if (!res.ok) throw new Error('Delete product failed');
+    return true;
   },
 
   getFarmerProducts: async () => {
@@ -111,10 +143,12 @@ export const cartAPI = {
 
   add: async (productId: string, quantity: number) => {
     const headers = await getAuthHeaders();
-
     const res = await fetch(`${API_URL}/api/cart`, {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ product_id: productId, quantity }),
     });
 
@@ -129,11 +163,16 @@ export const cartAPI = {
 export const orderAPI = {
   create: async (shippingAddress: string, items: any[]) => {
     const headers = await getAuthHeaders();
-
     const res = await fetch(`${API_URL}/api/orders`, {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shipping_address: shippingAddress, items }),
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        shipping_address: shippingAddress,
+        items,
+      }),
     });
 
     if (!res.ok) {
@@ -156,18 +195,16 @@ export const orderAPI = {
     status: 'confirmed' | 'shipped' | 'delivered'
   ) => {
     const headers = await getAuthHeaders();
-
     const res = await fetch(`${API_URL}/api/orders/${orderId}/status`, {
       method: 'PUT',
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ status }),
     });
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Failed to update order status');
-    }
-
+    if (!res.ok) throw new Error('Failed to update order status');
     return res.json();
   },
 };
@@ -178,7 +215,10 @@ export const orderAPI = {
 export const paymentAPI = {
   process: async () => {
     await new Promise(resolve => setTimeout(resolve, 1500));
-    return { success: true, transaction_id: `TXN_${Date.now()}` };
+    return {
+      success: true,
+      transaction_id: `TXN_${Date.now()}`,
+    };
   },
 };
 
@@ -189,31 +229,27 @@ export const adminAPI = {
   getAnalytics: async () => {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_URL}/api/admin/analytics`, { headers });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Failed to fetch analytics');
-    }
-
+    if (!res.ok) throw new Error('Failed to fetch analytics');
     return res.json();
   },
 
   getPendingProducts: async () => {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_URL}/api/admin/pending-products`, { headers });
-
     if (!res.ok) throw new Error('Failed to fetch pending products');
     return res.json();
   },
 
   approveProduct: async (id: string, status: 'approved' | 'rejected') => {
     const headers = await getAuthHeaders();
-
     const res = await fetch(
       `${API_URL}/api/admin/products/${id}/approve`,
       {
         method: 'PUT',
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ status }),
       }
     );
