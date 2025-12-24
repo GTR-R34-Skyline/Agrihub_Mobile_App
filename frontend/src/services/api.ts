@@ -32,8 +32,6 @@ export const authAPI = {
     if (!res.ok) throw new Error('Invalid credentials');
 
     const data = await res.json();
-
-    // ✅ persist token
     await AsyncStorage.setItem('token', data.access_token);
 
     return data;
@@ -135,7 +133,10 @@ export const orderAPI = {
     const res = await fetch(`${API_URL}/api/orders`, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shipping_address: shippingAddress, items }),
+      body: JSON.stringify({
+        shipping_address: shippingAddress,
+        items,
+      }),
     });
 
     if (!res.ok) throw new Error('Order creation failed');
@@ -151,23 +152,48 @@ export const orderAPI = {
 };
 
 /* =========================
+   PAYMENT (MOCK)
+========================= */
+export const paymentAPI = {
+  process: async () => {
+    console.log('💳 Processing payment (MOCK)');
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    return {
+      success: true,
+      message: 'Payment processed successfully',
+      transaction_id: `TXN_${Date.now()}`,
+    };
+  },
+};
+
+/* =========================
    ADMIN
 ========================= */
 export const adminAPI = {
   getPendingProducts: async () => {
     const headers = await getAuthHeader();
-    const res = await fetch(`${API_URL}/api/admin/pending-products`, { headers });
+    const res = await fetch(`${API_URL}/api/admin/pending-products`, {
+      headers,
+    });
     if (!res.ok) throw new Error('Failed to fetch pending products');
     return res.json();
   },
 
-  approveProduct: async (id: string, status: 'approved' | 'rejected') => {
+  approveProduct: async (
+    id: string,
+    status: 'approved' | 'rejected'
+  ) => {
     const headers = await getAuthHeader();
-    const res = await fetch(`${API_URL}/api/admin/products/${id}/approve`, {
-      method: 'PUT',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
+    const res = await fetch(
+      `${API_URL}/api/admin/products/${id}/approve`,
+      {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      }
+    );
 
     if (!res.ok) throw new Error('Approval failed');
     return res.json();
