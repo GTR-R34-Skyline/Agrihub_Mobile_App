@@ -7,7 +7,7 @@ This repo contains the **mobile frontend and backend** for AgriHub.
 
 ---
 
-## 🚀 Features
+## Features
 
 ### User Roles
 
@@ -40,7 +40,7 @@ This repo contains the **mobile frontend and backend** for AgriHub.
 ---
 
 
-## 🧠 Tech Stack (Frontend)
+## Tech Stack (Frontend)
 
 - Expo SDK
 - React Native + TypeScript
@@ -51,7 +51,7 @@ This repo contains the **mobile frontend and backend** for AgriHub.
 
 ---
 
-## 🔌 API Integration
+##  API Integration
 
 The app connects to a FastAPI backend (hosted publicly or locally) for authentication, products, cart, orders, and admin endpoints.
 
